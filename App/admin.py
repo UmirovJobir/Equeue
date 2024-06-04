@@ -44,7 +44,8 @@ class EmployeeRoleAdmin(admin.ModelAdmin):
     
 @admin.register(BusinessType)
 class BusinessTypeAdmin(admin.ModelAdmin):
-    list_display = ['name']
+    list_display = ['id','name']
+    list_display_links = ['id','name']
 
 
 @admin.register(Business)

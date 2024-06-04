@@ -13,16 +13,17 @@ class BusinessTypeListView(generics.ListAPIView):
 
 class BusinessListCreateView(generics.ListCreateAPIView):
     serializer_class = BusinessSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
     def get_queryset(self):
-        type_pk = self.kwargs['type_pk']
-        return Business.objects.filter(business_type__pk=type_pk)
+        type_id = self.request.query_params.get('type_id')
+        if type_id:
+            return Business.objects.filter(business_type__pk=type_id)
+        else:
+            return Business.objects.all()
     
     def perform_create(self, serializer):
-        type_pk = self.kwargs['type_pk']
-        business_type = BusinessType.objects.get(business_type__pk=type_pk)
-        serializer.save(business_type=business_type)
+        creater = self.request.user
+        serializer.save(creater=creater)
 
 
 class BusinessDetailView(generics.RetrieveAPIView):
