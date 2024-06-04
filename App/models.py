@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.html import format_html
 from django.core.validators import RegexValidator
+from Account.models import User
 
 class BusinessType(models.Model):
     name = models.CharField(max_length=100)
@@ -10,6 +11,7 @@ class BusinessType(models.Model):
 
 
 class Business(models.Model):
+    creater = models.ForeignKey(User, on_delete=models.CASCADE, related_name='businesses')
     business_type = models.ForeignKey(BusinessType, on_delete=models.CASCADE, related_name='businesses') 
     name = models.CharField(max_length=100)
     description = models.TextField()
@@ -19,6 +21,10 @@ class Business(models.Model):
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        verbose_name = 'Business'
+        verbose_name_plural = 'Businesses'
     
 
 class BusinessImage(models.Model):
@@ -30,9 +36,17 @@ class BusinessImage(models.Model):
     image_tag.short_description = 'Image'
 
 
+class ServiceName(models.Model):
+    business_type = models.ForeignKey(BusinessType, on_delete=models.CASCADE, related_name='types')
+    name = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.name
+
+
 class Service(models.Model):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
-    name = models.CharField(max_length=100)
+    service_name = models.ForeignKey(ServiceName, on_delete=models.CASCADE, related_name='services')
     duration = models.DurationField()
     parent = models.ForeignKey(
         'self',
@@ -100,4 +114,27 @@ class EmployeeWorkSchedule(models.Model):
     def __str__(self):
         return f"{self.employee}'s schedule for {self.get_workday_display()} ({self.start_time} - {self.end_time})"
 
-# #  App.BusinessType App.Business App.BusinessImage App.Service App.EmployeeRole App.Employee App.EmployeeWorkSchedule
+
+
+class Order(models.Model):
+    DAYS_OF_WEEK = [
+        ('MON', 'Monday'),
+        ('TUE', 'Tuesday'),
+        ('WED', 'Wednesday'),
+        ('THU', 'Thursday'),
+        ('FRI', 'Friday'),
+        ('SAT', 'Saturday'),
+        ('SUN', 'Sunday'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='orders')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='orders')
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='orders')
+    workday = models.CharField(max_length=3, choices=DAYS_OF_WEEK)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.employee} ordered {self.service} from {self.start_time} to {self.end_time}"

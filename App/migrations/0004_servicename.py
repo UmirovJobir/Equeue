@@ -7,16 +7,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('App', '0002_business'),
+        ('App', '0003_businessimage'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='BusinessImage',
+            name='ServiceName',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('image', models.ImageField(upload_to='businesses/images')),
-                ('business', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='images', to='App.business')),
+                ('name', models.CharField(max_length=100)),
+                ('business_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='types', to='App.businesstype')),
             ],
         ),
     ]

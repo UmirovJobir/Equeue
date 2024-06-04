@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'Account.apps.AccountConfig',
     
     #libraries
+    'rest_framework',
+    'rest_framework.authtoken',
     'nested_admin',
     'import_export',
 ]
@@ -151,3 +153,29 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'mediafiles')
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# for django-smart-selects
+JQUERY_URL = True
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
+
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'handlers': {
+#         'console': {
+#             'class': 'logging.StreamHandler',
+#         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['console'],
+#             'level': 'DEBUG',  # You can change this to INFO or ERROR based on your needs
+#         },
+#     },
+# }

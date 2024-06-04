@@ -1,8 +1,14 @@
+import logging
 import nested_admin
-from django.utils.html import format_html
 from django.contrib import admin
+from django.utils.html import format_html
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from .models import *
 from .forms import *
+
+
+# logger = logging.getLogger(__name__)
 
 
 class EmployeeWorkScheduleInline(nested_admin.NestedTabularInline):
@@ -25,6 +31,7 @@ class EmployeeInline(nested_admin.NestedTabularInline):
 class ServiceInline(nested_admin.NestedTabularInline):
     model = Service
     extra = 0
+    
 
 class BusinessImageInline(nested_admin.NestedTabularInline):
     model = BusinessImage
@@ -42,7 +49,9 @@ class BusinessTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Business)
 class BusinessAdmin(nested_admin.NestedModelAdmin):
-    list_display = ['name', 'business_type', 'latitude', 'longitude']
+    # list_select_related = ['business_type', 'images']
+    list_display = ['id','name', 'business_type', 'latitude', 'longitude']
+    list_display_links = ['id','name']
     readonly_fields = ['logo_tag']
     inlines = [
         BusinessImageInline,
@@ -51,7 +60,7 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
     ]
     fieldsets = [
         (None, {
-            'fields': ('business_type', 'name', 'description', 'logo', 'logo_tag', 'latitude', 'longitude')
+            'fields': ('creater', 'business_type', 'name', 'description', 'logo', 'logo_tag', 'latitude', 'longitude')
         }),
     ]
     
@@ -61,12 +70,14 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
         return None
     logo_tag.short_description = 'Logo Tag'
     
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    form = OrderForm
+    list_display = ['user', 'business', 'employee', 'service', 'workday', 'start_time', 'end_time']
+    fieldsets = [
+        (None, {
+            'fields': ('user', 'business', 'employee', 'service', 'workday', 'start_time', 'end_time')
+        }),
+    ]
     
-# @admin.register(Service)
-# class ServiceAdmin(admin.ModelAdmin):
-#     list_display = ['name', 'duration', 'business']
-#     fieldsets = [
-#         (None, {
-#             'fields': ('business', 'name', 'duration', 'parent')
-#         }),
-#     ]
