@@ -27,6 +27,9 @@ class BusinessSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
     
     def create(self, validated_data):
+        request = self.context.get('request')
+        validated_data['creater'] = request.user
+        
         business_type_id = validated_data.pop('business_type_id', None)
         business_type_name = validated_data.pop('business_type', None)
         

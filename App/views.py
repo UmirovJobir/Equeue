@@ -21,9 +21,9 @@ class BusinessListCreateView(generics.ListCreateAPIView):
         else:
             return Business.objects.all()
     
-    def perform_create(self, serializer):
-        creater = self.request.user
-        serializer.save(creater=creater)
+    # def perform_create(self, serializer):
+    #     creater = self.request.user
+    #     serializer.save(creater=creater)
 
 
 class BusinessDetailView(generics.RetrieveAPIView):
