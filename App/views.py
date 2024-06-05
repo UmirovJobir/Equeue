@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, serializers
 
 from .models import *
 from .serializers import *
@@ -13,6 +13,7 @@ class BusinessTypeListView(generics.ListAPIView):
 
 class BusinessListCreateView(generics.ListCreateAPIView):
     serializer_class = BusinessSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
     def get_queryset(self):
         type_id = self.request.query_params.get('type_id')
@@ -21,15 +22,41 @@ class BusinessListCreateView(generics.ListCreateAPIView):
         else:
             return Business.objects.all()
     
-    # def perform_create(self, serializer):
-    #     creater = self.request.user
-    #     serializer.save(creater=creater)
-
 
 class BusinessDetailView(generics.RetrieveAPIView):
     serializer_class = BusinessSerializer
 
     def get_object(self):
-        type_pk = self.kwargs['type_pk']
         business_pk = self.kwargs['business_pk']
-        return get_object_or_404(Business, pk=business_pk, business_type__pk=type_pk)
+        return get_object_or_404(Business, pk=business_pk)
+
+
+class ServiceListCreateView(generics.ListCreateAPIView):
+    serializer_class = ServiceSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        business_pk = self.kwargs['business_pk']
+        return Service.objects.filter(business__pk=business_pk, parent__isnull=True)
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        business_pk = self.kwargs['business_pk']
+        try:
+            business = Business.objects.get(pk=business_pk)
+        except Business.DoesNotExist:
+            raise serializers.ValidationError({"business": f"Business with ID {business_pk} does not exist."})
+        context['business'] = business
+        return context
+
+
+class SubServiceListAPIView(generics.ListAPIView):
+    serializer_class = ServiceSerializer
+
+    def get_queryset(self):
+        business_pk = self.kwargs['business_pk']
+        service_pk = self.kwargs['service_pk']
+        services = Service.objects.filter(business_id=business_pk, parent_id=service_pk)
+        if not services.exists():
+            raise serializers.ValidationError({"service": f"Service with ID {service_pk} does not have subservices."})
+        return services

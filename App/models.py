@@ -57,7 +57,12 @@ class Service(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return str(self.service_name.name)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['business', 'service_name'], name='unique_service_per_business')
+        ]
     
 
 class EmployeeRole(models.Model):

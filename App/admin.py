@@ -10,6 +10,13 @@ from .forms import *
 
 # logger = logging.getLogger(__name__)
 
+@admin.register(ServiceName)
+class ServiceNameAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'business_type']
+    list_display_links = ['id', 'name', 'business_type']
+    list_filter = ['business_type']
+    search_fields = ['name']
+
 
 class EmployeeWorkScheduleInline(nested_admin.NestedTabularInline):
     model = EmployeeWorkSchedule
@@ -31,6 +38,7 @@ class EmployeeInline(nested_admin.NestedTabularInline):
 class ServiceInline(nested_admin.NestedTabularInline):
     model = Service
     extra = 0
+    raw_id_fields = ['service_name']
     
 
 class BusinessImageInline(nested_admin.NestedTabularInline):
@@ -53,7 +61,7 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
     # list_select_related = ['business_type', 'images']
     list_display = ['id','name', 'business_type', 'latitude', 'longitude']
     list_display_links = ['id','name']
-    readonly_fields = ['logo_tag']
+    readonly_fields = ['id', 'logo_tag']
     inlines = [
         BusinessImageInline,
         ServiceInline,
@@ -61,7 +69,7 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
     ]
     fieldsets = [
         (None, {
-            'fields': ('creater', 'business_type', 'name', 'description', 'logo', 'logo_tag', 'latitude', 'longitude')
+            'fields': ('id', 'creater', 'business_type', 'name', 'description', 'logo', 'logo_tag', 'latitude', 'longitude')
         }),
     ]
     
