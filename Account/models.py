@@ -16,6 +16,10 @@ class User(AbstractUser):
             )
         ]
     )
+    confirmation_code = models.CharField(max_length=6, blank=True, null=True)
+    expiration_time = models.DateTimeField(null=True, blank=True)
+    new_phone_temp = models.CharField(max_length=17, blank=True, null=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     
