@@ -26,6 +26,12 @@ class Business(models.Model):
         verbose_name = 'Business'
         verbose_name_plural = 'Businesses'
     
+    def logo_tag(self):
+        if self.logo:
+            return format_html('<img src="%s" style="max-width: 80px; max-height: 80px;" />' % self.logo.url)
+        return None
+    logo_tag.short_description = 'Logo Tag'
+    
 
 class BusinessImage(models.Model):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='images')

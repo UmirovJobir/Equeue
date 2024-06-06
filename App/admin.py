@@ -64,7 +64,7 @@ class BusinessTypeAdmin(admin.ModelAdmin):
 @admin.register(Business)
 class BusinessAdmin(nested_admin.NestedModelAdmin):
     # list_select_related = ['business_type', 'images']
-    list_display = ['id','name', 'business_type', 'latitude', 'longitude']
+    list_display = ['id','name', 'business_type', 'logo_tag']
     list_display_links = ['id','name']
     readonly_fields = ['id', 'logo_tag']
     raw_id_fields = ['creator']
@@ -79,11 +79,7 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
         }),
     ]
     
-    def logo_tag(self, obj):
-        if obj.logo:
-            return format_html('<img src="%s" style="max-width: 200px; max-height: 200px;" />' % obj.logo.url)
-        return None
-    logo_tag.short_description = 'Logo Tag'
+    
     
 
 @admin.register(Order)

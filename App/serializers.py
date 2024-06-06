@@ -15,52 +15,72 @@ class BusinessImageSerializer(serializers.ModelSerializer):
 
 
 class BusinessSerializer(serializers.ModelSerializer):
-    business_type = serializers.SlugRelatedField(queryset=BusinessType.objects.all(), slug_field='name', required=False)
+    business_type = serializers.SlugRelatedField(
+        slug_field='name', read_only=True
+    )
+    new_business_type = serializers.CharField(write_only=True, required=False)
     business_type_id = serializers.IntegerField(write_only=True, required=False)
     images = BusinessImageSerializer(many=True, read_only=True)
     image_files = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False
     )
-    
+
+
     class Meta:
         model = Business
-        fields = ['id', 'name', 'business_type', 'business_type_id', 'description', 'logo', 'latitude', 'longitude', 'images', 'image_files']
+        fields = ['id', 'name', 'business_type', 'new_business_type', 'business_type_id', 'description', 'logo', 'latitude', 'longitude', 'images', 'image_files']
         extra_kwargs = {
             'creator': {'write_only': True}
         }
-        
-    def to_internal_value(self, data):
-        business_type_name = data.get('business_type')
-        if business_type_name:
-            business_type, created = BusinessType.objects.get_or_create(name=business_type_name)
-            data['business_type'] = business_type.name
-        return super().to_internal_value(data)
+
+    def validate(self, data):
+        business_type_id = data.get('business_type_id')
+        new_business_type = data.get('new_business_type')
+
+        if not new_business_type and not business_type_id:
+            raise serializers.ValidationError("You must provide either 'new_business_type' or 'business_type_id'.")
+
+        if business_type_id:
+            try:
+                business_type_obj = BusinessType.objects.get(pk=business_type_id)
+            except BusinessType.DoesNotExist:
+                raise serializers.ValidationError({"business_type_id": f"Business type with the given ID={business_type_id} does not exist."})
+        elif new_business_type:
+            business_type_obj, created = BusinessType.objects.get_or_create(name=new_business_type)
+
+        data['business_type'] = business_type_obj
+        return data
     
     def create(self, validated_data):
         request = self.context.get('request')
         validated_data['creator'] = request.user
-        
-        business_type_id = validated_data.pop('business_type_id', None)
-        business_type_name = validated_data.pop('business_type', None)
-        image_files = validated_data.pop('image_files', [])
-        
-        if business_type_id:
-            try:
-                business_type = BusinessType.objects.get(pk=business_type_id)
-            except BusinessType.DoesNotExist:
-                raise serializers.ValidationError({"business_type_id": f"Business type with the given ID={business_type_id} does not exist."})
-        elif business_type_name:
-            business_type, created = BusinessType.objects.get_or_create(name=business_type_name)
-        else:
-            raise serializers.ValidationError("You must provide either 'business_type' or 'business_type_id'.")
+        images_data = request.FILES.getlist('images')
 
-        validated_data['business_type'] = business_type
-        business = super().create(validated_data)
+        if not images_data:
+            raise serializers.ValidationError({"images": "This field is required."})
+
+        # Remove 'new_business_type' from validated_data
+        validated_data.pop('new_business_type', None)
         
-        for image_file in image_files:
+        business = super().create(validated_data)
+
+        for image_file in images_data:
             BusinessImage.objects.create(business=business, image=image_file)
         
         return business
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        image_files = request.FILES.getlist('images')
+
+        instance = super().update(instance, validated_data)
+
+        instance.images.all().delete()
+        if image_files:
+            for image_file in image_files:
+                BusinessImage.objects.create(business=instance, image=image_file)
+
+        return instance
  
  
 class ServiceNameSerializer(serializers.ModelSerializer):
@@ -71,7 +91,7 @@ class ServiceNameSerializer(serializers.ModelSerializer):
 
 class ServiceSerializer(serializers.ModelSerializer):
     service_name = serializers.SlugRelatedField(
-            queryset=ServiceName.objects.all(), slug_field='name', required=False, allow_null=True
+            slug_field='name', read_only=True
         )
     new_service_name = serializers.CharField(write_only=True, required=False)
     service_name_id = serializers.IntegerField(write_only=True, required=False)
@@ -144,17 +164,16 @@ class EmployeeSerializer(serializers.ModelSerializer):
         if not business:
             raise serializers.ValidationError({"business": "Business is not provided in the context."})
 
-        if request.method == 'POST':
-            if role_id:
-                try:
-                    role_obj = EmployeeRole.objects.get(pk=role_id)
-                except EmployeeRole.DoesNotExist:
-                    raise serializers.ValidationError({"role_id": f"EmployeeRole with the given ID={role_id} does not exist."})
-            elif new_role:
-                role_obj, created = EmployeeRole.objects.get_or_create(name=new_role, business_type_id=business.business_type_id)
-            else:
-                raise serializers.ValidationError({"error": "You must provide either 'new_role' or 'role_id'."})
-            data['role'] = role_obj
+        if role_id:
+            try:
+                role_obj = EmployeeRole.objects.get(pk=role_id)
+            except EmployeeRole.DoesNotExist:
+                raise serializers.ValidationError({"role_id": f"EmployeeRole with the given ID={role_id} does not exist."})
+        elif new_role:
+            role_obj, created = EmployeeRole.objects.get_or_create(name=new_role, business_type_id=business.business_type_id)
+        else:
+            raise serializers.ValidationError({"error": "You must provide either 'new_role' or 'role_id'."})
+        data['role'] = role_obj
         return data
     
     def create(self, validated_data):

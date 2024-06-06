@@ -22,14 +22,27 @@ class BusinessListCreateView(generics.ListCreateAPIView):
             return Business.objects.filter(business_type__pk=type_id)
         else:
             return Business.objects.all()
-    
 
-class BusinessDetailView(generics.RetrieveAPIView):
+
+class BusinessDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = BusinessSerializer
 
     def get_object(self):
         business_pk = self.kwargs['business_pk']
         return get_object_or_404(Business, pk=business_pk)
+    
+    # def get_serializer_context(self):
+    #     context = super().get_serializer_context()
+    #     print(self.request.data)
+    #     business_pk = self.kwargs['business_pk']
+    #     try:
+    #         business = Business.objects.get(pk=business_pk)
+    #     except Business.DoesNotExist:
+    #         raise serializers.ValidationError({"business": f"Business with ID {business_pk} does not exist."})
+    #     context['business'] = business
+    #     return context
+    
+
 
 
 class ServiceListCreateView(generics.ListCreateAPIView):
