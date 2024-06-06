@@ -80,5 +80,3 @@ class OrderForm(forms.ModelForm):
         ).exclude(id=self.instance.id)
         return not overlapping_orders.exists()
 
-
-

@@ -85,3 +85,5 @@ class ConfirmUpdateView(generics.GenericAPIView):
             "message": "Phone number updated successfully.",
             "token": token.key,
         }, status=status.HTTP_200_OK)
+
+

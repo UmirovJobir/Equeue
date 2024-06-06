@@ -38,8 +38,10 @@ class EmployeeInline(nested_admin.NestedTabularInline):
 class ServiceInline(nested_admin.NestedTabularInline):
     model = Service
     extra = 0
+    readonly_fields = ['pk']
     raw_id_fields = ['service_name']
-    
+    fields = ['pk', 'service_name', 'duration', 'parent']
+
 
 class BusinessImageInline(nested_admin.NestedTabularInline):
     model = BusinessImage
@@ -48,7 +50,10 @@ class BusinessImageInline(nested_admin.NestedTabularInline):
 
 @admin.register(EmployeeRole)
 class EmployeeRoleAdmin(admin.ModelAdmin):
-    list_display = ['name']
+    list_display = ['id', 'name', 'business_type']
+    list_display_links = ['id', 'name']
+    readonly_fields = ['id']
+    fields = ['id', 'business_type', 'name']
     
 @admin.register(BusinessType)
 class BusinessTypeAdmin(admin.ModelAdmin):
@@ -62,6 +67,7 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
     list_display = ['id','name', 'business_type', 'latitude', 'longitude']
     list_display_links = ['id','name']
     readonly_fields = ['id', 'logo_tag']
+    raw_id_fields = ['creator']
     inlines = [
         BusinessImageInline,
         ServiceInline,
@@ -69,7 +75,7 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
     ]
     fieldsets = [
         (None, {
-            'fields': ('id', 'creater', 'business_type', 'name', 'description', 'logo', 'logo_tag', 'latitude', 'longitude')
+            'fields': ('id', 'creator', 'business_type', 'name', 'description', 'logo', 'logo_tag', 'latitude', 'longitude')
         }),
     ]
     

@@ -11,7 +11,7 @@ class BusinessType(models.Model):
 
 
 class Business(models.Model):
-    creater = models.ForeignKey(User, on_delete=models.CASCADE, related_name='businesses')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='businesses')
     business_type = models.ForeignKey(BusinessType, on_delete=models.CASCADE, related_name='businesses') 
     name = models.CharField(max_length=100)
     description = models.TextField()
@@ -66,6 +66,7 @@ class Service(models.Model):
     
 
 class EmployeeRole(models.Model):
+    business_type = models.ForeignKey(BusinessType, on_delete=models.CASCADE, related_name='employee_role')
     name = models.CharField(max_length=100)
     
     def __str__(self):

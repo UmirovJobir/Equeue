@@ -26,7 +26,7 @@ class BusinessSerializer(serializers.ModelSerializer):
         model = Business
         fields = ['id', 'name', 'business_type', 'business_type_id', 'description', 'logo', 'latitude', 'longitude', 'images', 'image_files']
         extra_kwargs = {
-            'creater': {'write_only': True}
+            'creator': {'write_only': True}
         }
         
     def to_internal_value(self, data):
@@ -38,7 +38,7 @@ class BusinessSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         request = self.context.get('request')
-        validated_data['creater'] = request.user
+        validated_data['creator'] = request.user
         
         business_type_id = validated_data.pop('business_type_id', None)
         business_type_name = validated_data.pop('business_type', None)
@@ -115,4 +115,56 @@ class ServiceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"error": "This service name already exists for this business."})
         
         return service
+
+
+class EmployeeRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeRole
+        fields = ['id', 'name']
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    role = serializers.SlugRelatedField(
+        queryset=EmployeeRole.objects.all(), slug_field='name', required=False
+    )
+    new_role = serializers.CharField(write_only=True, required=False)
+    role_id = serializers.IntegerField(write_only=True, required=False)
+    image = serializers.ImageField(required=False)
     
+    class Meta:
+        model = Employee
+        fields = ['id', 'role', 'role_id', 'new_role', 'first_name', 'last_name', 'patronymic', 'duration', 'service', 'image', 'phone']
+    
+    def validate(self, data):
+        request = self.context.get('request')
+        business = self.context.get('business')
+        role_id = data.get('role_id')
+        new_role = data.get('new_role')
+
+        if not business:
+            raise serializers.ValidationError({"business": "Business is not provided in the context."})
+
+        if request.method == 'POST':
+            if role_id:
+                try:
+                    role_obj = EmployeeRole.objects.get(pk=role_id)
+                except EmployeeRole.DoesNotExist:
+                    raise serializers.ValidationError({"role_id": f"EmployeeRole with the given ID={role_id} does not exist."})
+            elif new_role:
+                role_obj, created = EmployeeRole.objects.get_or_create(name=new_role, business_type_id=business.business_type_id)
+            else:
+                raise serializers.ValidationError({"error": "You must provide either 'new_role' or 'role_id'."})
+            data['role'] = role_obj
+        return data
+    
+    def create(self, validated_data):
+        business = self.context.get('business')
+        validated_data['business'] = business
+        return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        business = self.context.get('business')
+        validated_data['business'] = business
+        return super().update(instance, validated_data)
+
+        

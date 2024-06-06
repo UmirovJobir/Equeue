@@ -6,7 +6,7 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('register/confirm/', RegisterConfirmView.as_view(), name='register-confirm'),
     path('resend-confirmation/', ResendConfirmationCodeView.as_view(), name='resend-confirmation'),
-    path('update/', UserDetailView.as_view(), name='user'),
-    path('update/confirm/', ConfirmUpdateView.as_view(), name='update-confirm'),
+    path('user/', UserDetailView.as_view(), name='user'),
+    path('user/confirm/', ConfirmUpdateView.as_view(), name='update-confirm'),
 ]
 
