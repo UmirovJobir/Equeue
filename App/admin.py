@@ -28,12 +28,13 @@ class EmployeeInline(nested_admin.NestedTabularInline):
     form = EmployeeForm
     extra = 0
     inlines = [EmployeeWorkScheduleInline]
-    readonly_fields = ['image_tag']
-    fieldsets = [
-        (None, {
-            'fields': ('role', 'last_name', 'first_name', 'patronymic', 'phone', 'duration', 'service', 'image', 'image_tag')
-        })
-    ]
+    readonly_fields = ['pk', 'image_tag']
+    fields = ['pk', 'role', 'last_name', 'first_name', 'patronymic', 'phone', 'duration', 'service', 'image', 'image_tag']
+    # fieldsets = [
+    #     (None, {
+    #         'fields': ('pk', 'role', 'last_name', 'first_name', 'patronymic', 'phone', 'duration', 'service', 'image', 'image_tag')
+    #     })
+    # ]
     
 class ServiceInline(nested_admin.NestedTabularInline):
     model = Service

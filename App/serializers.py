@@ -37,7 +37,7 @@ class BusinessSerializer(serializers.ModelSerializer):
         business_type_id = data.get('business_type_id')
         new_business_type = data.get('new_business_type')
 
-        if not new_business_type and not business_type_id:
+        if not self.instance and not (new_business_type or business_type_id):
             raise serializers.ValidationError("You must provide either 'new_business_type' or 'business_type_id'.")
 
         if business_type_id:
@@ -47,6 +47,8 @@ class BusinessSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"business_type_id": f"Business type with the given ID={business_type_id} does not exist."})
         elif new_business_type:
             business_type_obj, created = BusinessType.objects.get_or_create(name=new_business_type)
+        elif self.instance:
+            business_type_obj = self.instance.business_type
 
         data['business_type'] = business_type_obj
         return data
@@ -143,17 +145,24 @@ class EmployeeRoleSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 
+class EmployeeWorkScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeWorkSchedule
+        fields = ['id', 'workday', 'start_time', 'end_time']
+
+
 class EmployeeSerializer(serializers.ModelSerializer):
     role = serializers.SlugRelatedField(
-        queryset=EmployeeRole.objects.all(), slug_field='name', required=False
+        slug_field='name', read_only=True
     )
     new_role = serializers.CharField(write_only=True, required=False)
     role_id = serializers.IntegerField(write_only=True, required=False)
     image = serializers.ImageField(required=False)
+    work_schedules = EmployeeWorkScheduleSerializer(many=True)
     
     class Meta:
         model = Employee
-        fields = ['id', 'role', 'role_id', 'new_role', 'first_name', 'last_name', 'patronymic', 'duration', 'service', 'image', 'phone']
+        fields = ['id', 'role', 'role_id', 'new_role', 'first_name', 'last_name', 'patronymic', 'duration', 'service', 'image', 'phone', 'work_schedules']
     
     def validate(self, data):
         request = self.context.get('request')
@@ -164,7 +173,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         if not business:
             raise serializers.ValidationError({"business": "Business is not provided in the context."})
 
-        if not role_id and not new_role:
+        if not self.instance and not (role_id or new_role):
             raise serializers.ValidationError({"error": "You must provide either 'new_role' or 'role_id'."})
 
         if role_id:
@@ -174,21 +183,45 @@ class EmployeeSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"role_id": f"EmployeeRole with the given ID={role_id} does not exist."})
         elif new_role:
             role_obj, created = EmployeeRole.objects.get_or_create(name=new_role, business_type_id=business.business_type_id)
-        else:
-            raise serializers.ValidationError({"error": "You must provide either 'new_role' or 'role_id'."})
+        elif self.instance:
+            role_obj = self.instance.role
+        
         data['role'] = role_obj
         return data
     
     def create(self, validated_data):
         business = self.context.get('business')
         validated_data.pop('new_role', None)
+        service_data = validated_data.pop('service')
+        work_schedules_data = validated_data.pop('work_schedules')
         validated_data['business'] = business
-        return super().create(validated_data)
+        
+        employee = Employee.objects.create(**validated_data)
+        
+        for work_schedule_data in work_schedules_data:
+            EmployeeWorkSchedule.objects.create(employee=employee, **work_schedule_data)
+        
+        employee.service.set(service_data)
+        
+        return employee
     
     
     def update(self, instance, validated_data):
         business = self.context.get('business')
-        validated_data['business'] = business
-        return super().update(instance, validated_data)
+        work_schedules_data = validated_data.pop('work_schedules', None)
+        service_data = validated_data.pop('service', None)
+        validated_data.pop('new_role', None)
+        
+        instance = super().update(instance, validated_data)
+
+        if work_schedules_data:
+            instance.work_schedules.all().delete()
+            for work_schedule_data in work_schedules_data:
+                EmployeeWorkSchedule.objects.create(employee=instance, **work_schedule_data)
+
+        if service_data is not None:
+            instance.service.set(service_data)
+
+        return instance
 
         
