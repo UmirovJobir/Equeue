@@ -164,6 +164,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
         if not business:
             raise serializers.ValidationError({"business": "Business is not provided in the context."})
 
+        if not role_id and not new_role:
+            raise serializers.ValidationError({"error": "You must provide either 'new_role' or 'role_id'."})
+
         if role_id:
             try:
                 role_obj = EmployeeRole.objects.get(pk=role_id)
@@ -178,8 +181,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         business = self.context.get('business')
+        validated_data.pop('new_role', None)
         validated_data['business'] = business
         return super().create(validated_data)
+    
     
     def update(self, instance, validated_data):
         business = self.context.get('business')
