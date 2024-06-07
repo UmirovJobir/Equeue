@@ -89,6 +89,8 @@ class Employee(models.Model):
     service = models.ManyToManyField(Service, related_name='employees')
     image = models.ImageField(upload_to='employees/images', null=True, blank=True)
     phone = models.CharField(
+        null=True,
+        blank=True,
         unique=True,
         max_length=17,
         validators=[
