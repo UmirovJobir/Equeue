@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, serializers
@@ -41,8 +42,6 @@ class BusinessDetailView(generics.RetrieveUpdateDestroyAPIView):
     #         raise serializers.ValidationError({"business": f"Business with ID {business_pk} does not exist."})
     #     context['business'] = business
     #     return context
-    
-
 
 
 class ServiceListCreateView(generics.ListCreateAPIView):
@@ -62,7 +61,6 @@ class ServiceListCreateView(generics.ListCreateAPIView):
             raise serializers.ValidationError({"business": f"Business with ID {business_pk} does not exist."})
         context['business'] = business
         return context
-    
 
 
 class SubServiceListAPIView(generics.ListAPIView):
@@ -119,3 +117,28 @@ class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
             raise serializers.ValidationError({"business": f"Business with ID {business_pk} does not exist."})
         context['business'] = business
         return context
+
+
+class OrderListCreateView(generics.ListCreateAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated, IsBusinessCreatorOrCreateOnly]
+
+    def get_queryset(self):
+        employee_pk = self.kwargs['employee_pk']
+        today = timezone.now().date()
+        return Order.objects.filter(employee__pk=employee_pk)#, start_time__date__gte=today)
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        user = self.request.user
+        employee_pk = self.kwargs['employee_pk']
+        try:
+            employee = Employee.objects.get(pk=employee_pk)
+            business = employee.business
+        except Employee.DoesNotExist:
+            raise serializers.ValidationError({"employee": "Employee does not exist."})
+        context['business'] = business
+        context['employee'] = employee
+        context['user'] = user
+        return context
+     

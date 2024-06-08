@@ -30,11 +30,7 @@ class EmployeeInline(nested_admin.NestedTabularInline):
     inlines = [EmployeeWorkScheduleInline]
     readonly_fields = ['pk', 'image_tag']
     fields = ['pk', 'role', 'last_name', 'first_name', 'patronymic', 'phone', 'duration', 'service', 'image', 'image_tag']
-    # fieldsets = [
-    #     (None, {
-    #         'fields': ('pk', 'role', 'last_name', 'first_name', 'patronymic', 'phone', 'duration', 'service', 'image', 'image_tag')
-    #     })
-    # ]
+
     
 class ServiceInline(nested_admin.NestedTabularInline):
     model = Service
@@ -78,18 +74,16 @@ class BusinessAdmin(nested_admin.NestedModelAdmin):
         (None, {
             'fields': ('id', 'creator', 'business_type', 'name', 'description', 'logo', 'logo_tag', 'latitude', 'longitude')
         }),
-    ]
-    
-    
-    
+    ]    
+
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     form = OrderForm
-    list_display = ['user', 'business', 'employee', 'service', 'workday', 'start_time', 'end_time']
+    list_display = ['user', 'business', 'employee', 'service', 'start_time', 'end_time']
     fieldsets = [
         (None, {
-            'fields': ('user', 'business', 'employee', 'service', 'workday', 'start_time', 'end_time')
+            'fields': ('user', 'business', 'employee', 'service', 'start_time', 'end_time')
         }),
     ]
     

@@ -27,3 +27,24 @@ class IsBusinessCreatorOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return obj.business.creator == request.user
+
+
+class IsBusinessCreatorOrCreateOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            employee_pk = view.kwargs.get('employee_pk')
+            if employee_pk:
+                try:
+                    employee = Employee.objects.get(pk=employee_pk)
+                    business = employee.business
+                    return business.creator == request.user
+                except Employee.DoesNotExist:
+                    return False
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        # Allow all users to create orders
+        if request.method == 'POST':
+            return True
+        # Only allow the business creator to view the orders
+        return obj.business.creator == request.user

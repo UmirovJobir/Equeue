@@ -39,7 +39,7 @@ class OrderForm(forms.ModelForm):
         employee_duration = employee.duration
         service_duration = service.duration
         expected_duration = employee_duration if employee_duration else service_duration
-
+        
         # Validate the order duration matches the employee or service duration
         if order_duration != expected_duration:
             raise ValidationError({

@@ -10,4 +10,5 @@ urlpatterns = [
     path('business/<int:business_pk>/service/<int:service_pk>/', SubServiceListAPIView.as_view(), name='subservice'),
     path('business/<int:business_pk>/service/<int:service_pk>/employee/', EmployeeListCreateView.as_view(), name='employee'),
     path('business/<int:business_pk>/service/<int:service_pk>/employee/<int:employee_pk>/', EmployeeDetailView.as_view(), name='employee-detail'),
+    path('employee/<int:employee_pk>/order/', OrderListCreateView.as_view(), name='order'),
 ]

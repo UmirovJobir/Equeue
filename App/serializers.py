@@ -1,4 +1,6 @@
+from datetime import datetime
 from rest_framework import serializers
+from django.utils import timezone
 from django.db import IntegrityError
 from .models import *
 
@@ -224,4 +226,99 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
         return instance
 
+
+class OrderSerializer(serializers.ModelSerializer):
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'business', 'employee', 'service', 'start_time', 'end_time', 'created_at']
+        read_only_fields = ['user', 'business', 'employee', 'created_at']
+
+    def get_created_at(self, obj):
+        local_created_at = timezone.localtime(obj.created_at)
+        return local_created_at.strftime('%Y-%m-%d %H:%M')
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        local_start_time = timezone.localtime(instance.start_time)
+        local_end_time = timezone.localtime(instance.end_time)
+        ret['start_time'] = local_start_time.strftime('%Y-%m-%d %H:%M')
+        ret['end_time'] = local_end_time.strftime('%Y-%m-%d %H:%M')
+        return ret
+    
+    def to_internal_value(self, data):
+        mutable_data = data.copy()
+        if 'start_time' in mutable_data:
+            mutable_data['start_time'] = timezone.make_aware(
+                datetime.strptime(mutable_data['start_time'], '%Y-%m-%d %H:%M'), timezone.get_current_timezone()
+            )
+        if 'end_time' in mutable_data:
+            mutable_data['end_time'] = timezone.make_aware(
+                datetime.strptime(mutable_data['end_time'], '%Y-%m-%d %H:%M'), timezone.get_current_timezone()
+            )
+        return super().to_internal_value(mutable_data)
+    
+    def validate(self, data):
+        employee = self.context['employee']
+        service = data.get('service')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+
+        # Calculate the order duration
+        order_duration = end_time - start_time
+
+        # Get the employee duration if it exists, otherwise use the service duration
+        employee_duration = employee.duration
+        service_duration = service.duration
+        expected_duration = employee_duration if employee_duration else service_duration
         
+
+        # Validate the order duration matches the employee or service duration
+        if order_duration != expected_duration:
+            raise serializers.ValidationError({
+                'end_time': 'The duration between start_time and end_time must match the employee or service duration.'
+            })
+
+        # Validate the order times fit within the employee's work schedule
+        if not self.employee_works_on_day_and_time(employee, start_time, end_time):
+            raise serializers.ValidationError({
+                'start_time': 'The order times must fall within the employee\'s work schedule for the selected day.',
+                'end_time': 'The order times must fall within the employee\'s work schedule for the selected day.'
+            })
+
+        # Check if the employee is available during the specified times
+        if not self.is_employee_available(employee, start_time, end_time):
+            raise serializers.ValidationError({
+                'start_time': 'The employee is not available during the specified times.',
+                'end_time': 'The employee is not available during the specified times.'
+            })
+
+        return data
+
+    def employee_works_on_day_and_time(self, employee, start_time, end_time):
+        workday = start_time.strftime('%a').upper()[:3]
+        work_schedules = EmployeeWorkSchedule.objects.filter(employee=employee, workday=workday)
+        for schedule in work_schedules:
+            if schedule.start_time <= start_time.time() and schedule.end_time >= end_time.time():
+                return True
+        return False
+
+    def is_employee_available(self, employee, start_time, end_time):
+        return not Order.objects.filter(
+            employee=employee,
+            start_time__lt=end_time,
+            end_time__gt=start_time
+        ).exists()
+    
+    def create(self, validated_data):
+        business = self.context.get('business')
+        employee = self.context.get('employee')
+        user = self.context.get('user')
+    
+        order = Order.objects.create(
+            user=user, business=business, employee=employee, **validated_data
+        )
+        return order
+
+

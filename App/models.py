@@ -85,7 +85,7 @@ class Employee(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     patronymic = models.CharField(max_length=100)
-    duration = models.DurationField()
+    duration = models.DurationField(null=True, blank=True)
     service = models.ManyToManyField(Service, related_name='employees')
     image = models.ImageField(upload_to='employees/images', null=True, blank=True)
     phone = models.CharField(
@@ -131,20 +131,10 @@ class EmployeeWorkSchedule(models.Model):
 
 
 class Order(models.Model):
-    DAYS_OF_WEEK = [
-        ('MON', 'Monday'),
-        ('TUE', 'Tuesday'),
-        ('WED', 'Wednesday'),
-        ('THU', 'Thursday'),
-        ('FRI', 'Friday'),
-        ('SAT', 'Saturday'),
-        ('SUN', 'Sunday'),
-    ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='orders')
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='orders')
     service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='orders')
-    workday = models.CharField(max_length=3, choices=DAYS_OF_WEEK)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
