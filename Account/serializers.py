@@ -142,15 +142,15 @@ class UserSerializer(serializers.ModelSerializer):
             self.instance.save()
             # Send confirmation_code to the new phone number
             # send_sms(value, confirmation_code)
-            raise serializers.ValidationError("A confirmation code has been sent to the new phone number. Please confirm to complete the update.")
+            self.context['confirmation_sent'] = True
         return value
 
     def update(self, instance, validated_data):
         if 'phone' in validated_data:
-            validated_data.pop('phone')  # Remove phone from validated data to prevent direct update
+            # Remove phone from validated data to prevent direct update
+            validated_data.pop('phone')
 
         for attr, value in validated_data.items():
-            print(attr, value)
             setattr(instance, attr, value)
         instance.save()
         return instance

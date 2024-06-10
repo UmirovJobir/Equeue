@@ -68,6 +68,12 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+        
+        if serializer.context.get('confirmation_sent'):
+            return Response({
+                "detail": "A confirmation code has been sent to the new phone number"
+            }, status=status.HTTP_200_OK)
+        
         self.perform_update(serializer)
 
         return Response(serializer.data)
