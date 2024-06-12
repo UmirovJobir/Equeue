@@ -1,7 +1,8 @@
 from django.utils import timezone
+from datetime import datetime, timedelta
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions, serializers
+from rest_framework import generics, permissions, serializers, response, views, status
 
 from .models import *
 from .serializers import *
@@ -126,7 +127,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         employee_pk = self.kwargs['employee_pk']
         today = timezone.now().date()
-        return Order.objects.filter(employee__pk=employee_pk)#, start_time__date__gte=today)
+        return Order.objects.filter(employee__pk=employee_pk, start_time__date__gte=today)
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -142,3 +143,75 @@ class OrderListCreateView(generics.ListCreateAPIView):
         context['user'] = user
         return context
      
+
+# class AvailableTimeListView(views.APIView):
+#     def get(self, request, *args, **kwargs):
+#         employee_pk = self.kwargs['employee_pk']
+#         try:
+#             employee = Employee.objects.get(pk=employee_pk)
+#         except Employee.DoesNotExist:
+#             raise serializers.ValidationError({"employee": "Employee does not exist."})
+        
+#         today = timezone.now().date()
+#         orders = Order.objects.filter(employee=employee, start_time__date__gte=today)
+        
+#         serializers = AvailableTimesSerializer(orders, many=True)
+        
+#         return response.Response(serializers.data)
+
+from rest_framework.response import Response
+
+class AvailableTimeView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AvailableTimeSerializer
+
+    def get(self, request, *args, **kwargs):
+        employee_pk = self.kwargs['employee_pk']
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        if not start_date or not end_date:
+            return Response({"detail": "Please provide start_date and end_date in YYYY-MM-DD format."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({"detail": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            employee = Employee.objects.get(pk=employee_pk)
+        except Employee.DoesNotExist:
+            return Response({"detail": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        available_times = self.calculate_available_times(employee, start_date, end_date)
+
+        serializer = self.get_serializer(available_times, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def calculate_available_times(self, employee, start_date, end_date):
+        available_times = []
+        delta = timedelta(days=1)
+
+        while start_date <= end_date:
+            work_schedules = EmployeeWorkSchedule.objects.filter(employee=employee, workday=start_date.strftime('%a').upper()[:3])
+            orders = Order.objects.filter(employee=employee, start_time__date=start_date)
+
+            for schedule in work_schedules:
+                start_of_day = datetime.combine(start_date, schedule.start_time)
+                end_of_day = datetime.combine(start_date, schedule.end_time)
+
+                current_time = start_of_day
+
+                while current_time < end_of_day:
+                    next_time = current_time + timedelta(minutes=30)
+                    if not orders.filter(start_time__lt=next_time, end_time__gt=current_time).exists():
+                        available_times.append({
+                            "start_time": current_time,
+                            "end_time": next_time
+                        })
+                    current_time = next_time
+
+            start_date += delta
+
+        return available_times
