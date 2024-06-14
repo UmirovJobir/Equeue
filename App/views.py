@@ -32,17 +32,28 @@ class BusinessDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_object(self):
         business_pk = self.kwargs['business_pk']
         return get_object_or_404(Business, pk=business_pk)
-    
-    # def get_serializer_context(self):
-    #     context = super().get_serializer_context()
-    #     print(self.request.data)
-    #     business_pk = self.kwargs['business_pk']
-    #     try:
-    #         business = Business.objects.get(pk=business_pk)
-    #     except Business.DoesNotExist:
-    #         raise serializers.ValidationError({"business": f"Business with ID {business_pk} does not exist."})
-    #     context['business'] = business
-    #     return context
+
+
+class BusinessOrdersListView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsBusinessCreator]
+
+    def get_queryset(self):
+        employee_pk = self.kwargs['employee_pk']
+        date_str = self.request.query_params.get('date')
+        
+        if date_str:
+            try:
+                date = timezone.datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValidationError({"date": "Date format should be YYYY-MM-DD"})
+        else:
+            date = timezone.now().date()
+            
+        return Order.objects.filter(
+            employee__pk=employee_pk,
+            start_time__date=date
+        )
 
 
 class ServiceListCreateView(generics.ListCreateAPIView):
@@ -122,12 +133,25 @@ class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class OrderListCreateView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated, IsBusinessCreatorOrCreateOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         employee_pk = self.kwargs['employee_pk']
-        today = timezone.now().date()
-        return Order.objects.filter(employee__pk=employee_pk, start_time__date__gte=today)
+        date_str = self.request.query_params.get('date')
+        
+        if date_str:
+            try:
+                date = timezone.datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValidationError({"date": "Date format should be YYYY-MM-DD"})
+        else:
+            date = timezone.now().date()
+            
+        return Order.objects.filter(
+            user=self.request.user,
+            employee__pk=employee_pk,
+            start_time__date=date,
+        )
     
     def get_serializer_context(self):
         context = super().get_serializer_context()

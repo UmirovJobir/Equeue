@@ -11,5 +11,6 @@ urlpatterns = [
     path('business/<int:business_pk>/service/<int:service_pk>/employee/', EmployeeListCreateView.as_view(), name='employee'),
     path('business/<int:business_pk>/service/<int:service_pk>/employee/<int:employee_pk>/', EmployeeDetailView.as_view(), name='employee-detail'),
     path('business/<int:business_pk>/service/<int:service_pk>/employee/<int:employee_pk>/evailabe/', AvailableTimeView.as_view(), name='available'),
-    path('employee/<int:employee_pk>/order/', OrderListCreateView.as_view(), name='order'),
+    path('business/employee/<int:employee_pk>/order/', BusinessOrdersListView.as_view(), name='business-order'),
+    path('user/employee/<int:employee_pk>/order/', OrderListCreateView.as_view(), name='order'),
 ]
