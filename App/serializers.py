@@ -325,10 +325,4 @@ class OrderSerializer(serializers.ModelSerializer):
 class AvailableTimeSerializer(serializers.Serializer):
     start_time = serializers.DateTimeField()
     end_time = serializers.DateTimeField()
-    
-    
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        ret['start_time'] = instance['start_time'].strftime('%Y-%m-%d %H:%M')
-        ret['end_time'] = instance['end_time'].strftime('%Y-%m-%d %H:%M')
-        return ret
+

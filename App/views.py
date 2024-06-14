@@ -1,5 +1,5 @@
-from django.utils import timezone
-from datetime import datetime, timedelta
+# from django.utils import timezone
+from datetime import datetime, timedelta, timezone
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, serializers, response, views, status
@@ -142,24 +142,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
         context['employee'] = employee
         context['user'] = user
         return context
-     
 
-# class AvailableTimeListView(views.APIView):
-#     def get(self, request, *args, **kwargs):
-#         employee_pk = self.kwargs['employee_pk']
-#         try:
-#             employee = Employee.objects.get(pk=employee_pk)
-#         except Employee.DoesNotExist:
-#             raise serializers.ValidationError({"employee": "Employee does not exist."})
-        
-#         today = timezone.now().date()
-#         orders = Order.objects.filter(employee=employee, start_time__date__gte=today)
-        
-#         serializers = AvailableTimesSerializer(orders, many=True)
-        
-#         return response.Response(serializers.data)
-
-from rest_framework.response import Response
 
 class AvailableTimeView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -167,51 +150,63 @@ class AvailableTimeView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         employee_pk = self.kwargs['employee_pk']
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
+        service_pk = self.kwargs['service_pk']
 
-        if not start_date or not end_date:
-            return Response({"detail": "Please provide start_date and end_date in YYYY-MM-DD format."}, status=status.HTTP_400_BAD_REQUEST)
+        today = datetime.now()
+
+        date = request.query_params.get('date')
+        
+        if date is None:
+            date = today.date().strftime('%Y-%m-%d')
+        elif date < today.date().strftime('%Y-%m-%d'):
+            return response.Response({"detail": "Date must be today or in the future."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            date = datetime.strptime(date, '%Y-%m-%d').date()
         except ValueError:
-            return Response({"detail": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+            return response.Response({"detail": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             employee = Employee.objects.get(pk=employee_pk)
         except Employee.DoesNotExist:
-            return Response({"detail": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+            return response.Response({"detail": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            service = Service.objects.get(pk=service_pk)
+        except Service.DoesNotExist:
+            return response.Response({"detail": "Service not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        available_times = self.calculate_available_times(employee, start_date, end_date)
+        available_times = self.calculate_available_times(employee, service, date)
 
         serializer = self.get_serializer(available_times, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
-    def calculate_available_times(self, employee, start_date, end_date):
+
+    def calculate_available_times(self, employee, service, date):
         available_times = []
-        delta = timedelta(days=1)
+        
+        employee_duration = employee.duration
+        service_duration = service.duration
+        expected_duration = employee_duration if employee_duration else service_duration
+        
+        work_schedules = EmployeeWorkSchedule.objects.filter(employee=employee, workday=date.strftime('%a').upper()[:3])
+        orders = Order.objects.filter(employee=employee, start_time__date=date, end_time__date=date)
+        
+        for schedule in work_schedules:
+            start_of_day =  timezone.make_aware(datetime.combine(date, schedule.start_time), timezone.get_current_timezone())            
+            end_of_day =  timezone.make_aware(datetime.combine(date, schedule.end_time), timezone.get_current_timezone())
 
-        while start_date <= end_date:
-            work_schedules = EmployeeWorkSchedule.objects.filter(employee=employee, workday=start_date.strftime('%a').upper()[:3])
-            orders = Order.objects.filter(employee=employee, start_time__date=start_date)
+            current_time = start_of_day
 
-            for schedule in work_schedules:
-                start_of_day = datetime.combine(start_date, schedule.start_time)
-                end_of_day = datetime.combine(start_date, schedule.end_time)
-
-                current_time = start_of_day
-
-                while current_time < end_of_day:
-                    next_time = current_time + timedelta(minutes=30)
-                    if not orders.filter(start_time__lt=next_time, end_time__gt=current_time).exists():
-                        available_times.append({
-                            "start_time": current_time,
-                            "end_time": next_time
-                        })
-                    current_time = next_time
-
-            start_date += delta
+            while current_time < end_of_day:
+                next_time = current_time + timedelta(seconds=expected_duration.total_seconds())
+                if not orders.filter(start_time__lt=next_time, end_time__gt=current_time).exists():
+                    available_times.append({
+                        "start_time": current_time.strftime('%H:%M'),
+                        "end_time": next_time.strftime('%H:%M')
+                    })
+                current_time = next_time
 
         return available_times
+
+
